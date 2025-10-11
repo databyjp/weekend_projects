@@ -25,7 +25,7 @@ async def main():
         for result in results:
             results_md[result.url] = result.markdown
 
-    with open("../output/weaviate_docs_crawl4ai.json", "w") as f:
+    with open("./output/weaviate_docs_crawl4ai.json", "w") as f:
         json.dump(results_md, f)
 
 if __name__ == "__main__":
