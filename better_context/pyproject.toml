@@ -8,5 +8,6 @@ dependencies = [
     "chonkie[all]>=1.4.0",
     "crawl4ai>=0.7.4",
     "mcp>=1.17.0",
+    "pydantic-ai>=1.0.17",
     "weaviate-client>=4.17.0",
 ]
