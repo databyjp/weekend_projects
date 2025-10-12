@@ -27,7 +27,7 @@ uv sync
 
 ## Development Workflow
 
-The project follows a numbered script workflow (0-4) that represents the data pipeline stages:
+The project follows a numbered script workflow (0-5) that represents the data pipeline stages and usage example:
 
 ### 1. Reset Database (`0_reset_db.py`)
 ```bash
@@ -67,8 +67,9 @@ python 3_check_rag.py
 python 4_build_mcp.py
 ```
 Runs the MCP server that exposes the RAG functionality as a tool. The server communicates via stdio and provides:
-- **Tool**: `search_weaviate_docs` - Searches the indexed documentation and returns AI-generated answers with source citations
+- **Tool**: `search_weaviate_docs` - Searches the indexed documentation and returns relevant chunks
 - **Parameters**: `query` (required), `limit` (optional, default: 5)
+- **Returns**: Raw chunk objects with `chunk`, `chunk_no`, and `path` properties
 
 To use with Claude Desktop, add to your MCP configuration:
 ```json
@@ -78,13 +79,22 @@ To use with Claude Desktop, add to your MCP configuration:
       "command": "uv",
       "args": ["run", "python", "/path/to/better_context/4_build_mcp.py"],
       "env": {
-        "COHERE_API_KEY": "your-key",
-        "ANTHROPIC_API_KEY": "your-key"
+        "COHERE_API_KEY": "your-key"
       }
     }
   }
 }
 ```
+
+### 6. Agent Example (`5_agent_example.py`)
+```bash
+python 5_agent_example.py
+```
+Demonstrates using the MCP server with `pydantic-ai` to create an agent that can answer Weaviate questions:
+- Connects to the MCP server using `MCPServerStdio`
+- Creates an agent with Claude 3.5 Haiku that uses the search tool
+- System prompt emphasizes using tools over internal knowledge for up-to-date code examples
+- Example query about vector compression methods with end-to-end code examples
 
 ## Architecture
 
@@ -122,12 +132,21 @@ To use with Claude Desktop, add to your MCP configuration:
 - **Batch Size**: Set to 50 objects per batch in `2_index_docs.py:49`
 - **RAG Model**: Currently uses `claude-3-5-haiku-latest` in `3_check_rag.py:16`
 
-## MCP Server
+## MCP Server and Agent Usage
 
-The MCP server (`4_build_mcp.py`) exposes a single tool that wraps the RAG pipeline. It uses the same hybrid search + Claude generation pattern as `3_check_rag.py`, but makes it accessible to any MCP client.
+The MCP server (`4_build_mcp.py`) exposes a single tool for searching the documentation chunks. Unlike the test script in `3_check_rag.py` which uses Claude generation directly, the MCP server returns raw chunks and delegates the generation to the calling agent.
 
 **Tool Schema**:
 - **Name**: `search_weaviate_docs`
-- **Input**: `query` (string), `limit` (integer, optional)
-- **Output**: Generated answer with source URL citations
+- **Input**: `query` (string), `limit` (integer, optional, default: 5)
+- **Output**: Raw chunk objects with `chunk`, `chunk_no`, and `path` properties
 - **Connection**: Creates/closes Weaviate client per request to avoid connection pooling issues
+
+**Agent Pattern** (`5_agent_example.py`):
+The agent example shows the recommended usage pattern:
+1. MCP server provides retrieval tool (returns chunks only)
+2. Agent (pydantic-ai) decides when to call the tool
+3. Agent's LLM synthesizes the chunks into coherent answers
+4. System prompt instructs agent to prefer tool results over internal knowledge
+
+This separation allows the agent's LLM to handle generation, while the MCP server focuses purely on retrieval.
