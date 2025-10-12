@@ -15,7 +15,7 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="search_weaviate_docs",
-            description="Search Weaviate documentation and get AI-generated answers with source citations",
+            description="Search Weaviate documentation and get chunks of relevant text",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -45,34 +45,23 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
     client = weaviate.connect_to_local(
         headers={
-            "X-Cohere-Api-Key": os.getenv("COHERE_API_KEY"),
-            "X-Anthropic-Api-Key": os.getenv("ANTHROPIC_API_KEY"),
+            "X-Cohere-Api-Key": os.getenv("COHERE_API_KEY")
         },
     )
 
     try:
         chunks = client.collections.use("Chunks")
 
-        rag_config = GenerativeConfig.anthropic(
-            model="claude-3-5-haiku-latest"
-        )
-
-        response = chunks.generate.hybrid(
+        response = chunks.query.hybrid(
             query=query,
             limit=limit,
-            grouped_task=f"{query}. Cite the source URLs please.",
-            generative_provider=rag_config
         )
 
-        # Format response with sources
-        answer = response.generative.text
-        sources = "\n\nSources:\n" + "\n".join(
-            f"- {o.properties['path']}" for o in response.objects
-        )
+        objs = [o.properties for o in response.objects]
 
         return [TextContent(
             type="text",
-            text=answer + sources
+            text=str(objs)
         )]
 
     finally:
