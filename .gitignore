@@ -1,5 +1,5 @@
 # Project specific
-better_context/output
+*/output/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
